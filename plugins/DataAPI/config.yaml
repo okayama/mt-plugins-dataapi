@@ -28,3 +28,9 @@ callbacks:
     data_api_save_filter.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
     data_api_pre_save.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
     data_api_post_save.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    data_api_post_delete.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    init_request: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    init_app: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    pre_run: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    post_run: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    take_down: $debug_dataapi::DataAPI::Plugin::_callback_checker
