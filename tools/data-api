@@ -1,0 +1,183 @@
+#!/usr/bin/perl
+use strict;
+use FindBin;
+use lib ( "$FindBin::Bin/../lib", "$FindBin::Bin/../extlib" );
+use MT;
+use HTTP::Request;
+use Data::Dumper;
+
+my $api_url = 'http://example.com/mt/mt-data-api.cgi/v1';
+my $blog_id = 'YOUR BLOG ID';
+
+my ( $sessionId, $accessToken, $expiresIn );
+my ( $entry_id );
+
+{ # authentication
+
+    my $username = 'USERNAME';
+    my $password = 'PASSWORD';
+    
+    my $endpoint = $api_url . '/authentication';
+    my $params = {
+        'username' => $username,
+        'password' => $password,
+        'clientId' => 'data-api-test',
+    };
+
+    my $request = HTTP::Request->new( 'POST', $endpoint );
+    $request->content( join( '&', map { $_ . '=' . $params->{ $_ } } keys %$params ) );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        die $res->as_string; # include 401
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    print Dumper( $content );
+
+    $sessionId = $content->{ sessionId };
+    $accessToken = $content->{ accessToken };
+    $expiresIn = $content->{ expiresIn };
+}
+
+# --------------------
+
+{ # create_entry: MT::DataAPI::Endpoint::Entry::create
+
+    my $endpoint = $api_url . "/sites/$blog_id/entries";
+    my $params = {
+        'entry' => MT::Util::to_json( { title => 'Hello by DataAPI: ' . MT::Util::log_time(),
+                                        body => 'This is test',
+                                        status => 'Draft',
+                                        foo => 'foooooooooooo!', # extended by plugin
+                                        customFields => [
+                                            {
+                                              basename => 'text',
+                                              value => 'teeeeeeeeeeeeext',
+                                            }
+                                        ],
+                                      },
+                                    ),
+    };
+
+    my $request = HTTP::Request->new( 'POST', $endpoint );
+    $request->header( 'X-MT-Authorization' => "MTAuth accessToken=$accessToken" );
+    $request->content( join( '&', map { $_ . '=' . $params->{ $_ } } keys %$params ) );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        if ( $res->code == 500 ) {
+            my $content = MT::Util::from_json( $res->content );
+            my $message = $content->{ error }->{ message };
+            $message =~ s/\\x{([0-9a-z]+)}/chr(hex($1))/ge;
+            die $message; # invalid request, and so on...
+        } else {
+            die $res->as_string;
+        }
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    $entry_id = $content->{ id };
+    
+    print "created [ID:$entry_id]\n";
+}
+
+# --------------------
+
+{ # get_entry: MT::DataAPI::Endpoint::Entry::get
+
+    my $endpoint = $api_url . "/sites/$blog_id/entries/$entry_id";
+    my $request = HTTP::Request->new( 'GET', $endpoint );
+    $request->header( 'X-MT-Authorization' => "MTAuth accessToken=$accessToken" );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        die $res->as_string;
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    print Dumper( $content ); # include customFields, extended columns.
+}
+
+# --------------------
+
+{ # update_entry: MT::DataAPI::Endpoint::Entry::update
+
+    my $endpoint = $api_url . "/sites/$blog_id/entries/$entry_id";
+    my $params = {
+        'entry' => MT::Util::to_json( { title => 'Update by DataAPI: ' . MT::Util::log_time(),
+                                        foo => 'barrrrrrrrrrrr!', # extended by plugin
+                                        customFields => [
+                                            {
+                                              basename => 'text',
+                                              value => 'texxxxxxxxxxxxxt',
+                                            }
+                                        ],
+                                      },
+                                    ),
+    };
+
+    my $request = HTTP::Request->new( 'PUT', $endpoint );
+    $request->header( 'X-MT-Authorization' => "MTAuth accessToken=$accessToken" );
+    $request->content( join( '&', map { $_ . '=' . $params->{ $_ } } keys %$params ) );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        if ( $res->code == 500 ) {
+            my $content = MT::Util::from_json( $res->content );
+            my $message = $content->{ error }->{ message };
+            $message =~ s/\\x{([0-9a-z]+)}/chr(hex($1))/ge;
+            die $message; # invalid request, and so on...
+        } else {
+            die $res->as_string;
+        }
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    $entry_id = $content->{ id };
+    
+    print "updated [ID:$entry_id]\n";
+}
+
+# --------------------
+
+{ # delete_entry: MT::DataAPI::Endpoint::Entry::delete
+
+    my $endpoint = $api_url . "/sites/$blog_id/entries/$entry_id";
+
+    my $request = HTTP::Request->new( 'DELETE', $endpoint );
+    $request->header( 'X-MT-Authorization' => "MTAuth accessToken=$accessToken" );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        die $res->as_string;
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    $entry_id = $content->{ id };
+    
+    print "deleted [ID:$entry_id]\n";
+}
+
+# --------------------
+
+{ # revoke_authentication: MT::DataAPI::Endpoint::Auth::revoke_authentication
+
+    my $endpoint = $api_url . "/authentication";
+    my $request = HTTP::Request->new( 'DELETE', $endpoint );
+    $request->header( 'X-MT-Authorization' => "MTAuth accessToken=$accessToken" );
+    my $ua = MT->new_ua;
+    my $res = $ua->request( $request );
+    
+    unless ( $res->is_success ) {
+        die $res->as_string;
+    }
+    
+    my $content = MT::Util::from_json( $res->content );
+    print Dumper( $content ); #
+}

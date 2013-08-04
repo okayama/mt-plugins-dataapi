@@ -1,0 +1,30 @@
+id: DataAPI
+name: DataAPI
+key: dataapi
+version: 0.1
+schema_version: 0.1
+author_name: okayama
+author_link: http://weeeblog.net/
+object_types:
+    entry:
+        foo: string(255)
+applications:
+    data_api:
+        resources:
+            entry:
+                fields:
+                    - name: foo
+                      from_object_default: bar
+                updatable_fields:
+                    - foo
+callbacks:
+    MT::App::DataAPI::init_request: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    MT::App::DataAPI::init_app: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    MT::App::DataAPI::pre_run: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    pre_run_data_api: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    post_run_data_api: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    MT::App::DataAPI::post_run: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    MT::App::DataAPI::take_down: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    data_api_save_filter.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    data_api_pre_save.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
+    data_api_post_save.entry: $debug_dataapi::DataAPI::Plugin::_callback_checker
